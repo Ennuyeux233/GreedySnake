@@ -1,7 +1,7 @@
 #include <stdio.h>    
 //计时所需
 #include <time.h>
-//将getchar变成getch函数
+//将getchar变成不需要按回车输入的函数
 #include <termios.h>
 //创建线程
 #include <pthread.h>  
@@ -131,6 +131,7 @@ int main()
 //获取用户输入
 void * input()
 {
+    //将getchar变成不需要按回车输入的函数
     struct termios new;
     tcgetattr(0,&new);
     new.c_lflag = new.c_lflag & ~(ICANON | ECHO);
