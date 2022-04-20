@@ -1,0 +1,99 @@
+#include <stdio.h>
+#include <time.h>
+#include <termios.h>
+#include <pthread.h>
+#include <stdlib.h>
+
+#define UP    9
+#define DOWN  6
+#define LEFT  10
+#define RIGHT 5
+#define FOOD  32
+
+void * input();
+
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER ;
+short direction = 5;
+time_t time1,time2;
+int main()
+{
+    short head=(30/2)*100+2,tail=(30/2)*100+1,tailDir=RIGHT,forward=0,food=0,map[30][60]={0};
+    pthread_t tid;
+    map[head/100][head%100] = (map[tail/100][tail%100] = RIGHT);
+    srand((time1=time(&time2)));
+    pthread_create(&tid,NULL,input,NULL);
+    for(int i=0;i<30;i++) for(int j=0;j<60;j++) if(i==0||i==29||j==0||j==59) map[i][j]=1;
+    for(short y,x;1;time(&time2))
+    {
+        if(food==0&&(y=((y=(random()%3000))*((x=y%60)>0))/100)>0&&map[y][x]==0)
+        {
+            food=(map[y][x]=FOOD);
+            system("clear");
+            for(short i =0;i<30;i++)
+            {
+                for(short j = 0;j<60;j++)
+                {
+                    if(map[i][j]==1)         printf("\033[30m[]");
+                    else if(map[i][j]==FOOD) printf("\033[31m[]");
+                    else if(map[i][j]==0)    printf("  ");
+                    else                     printf("\033[32m[]");
+                }
+                printf("\n");
+            }
+        }
+        pthread_mutex_lock(&lock);
+        if(time2-time1<0.3) 
+        {
+            pthread_mutex_unlock(&lock);
+            continue;
+        }
+        map[head/100][head%100]=direction;
+        head+=(direction==DOWN)*100-(direction==UP)*100+(direction==RIGHT)-(direction==LEFT);
+        food=!(time1=time2);
+        if((forward=map[head/100][head%100])!=FOOD)
+        {
+            tailDir = map[tail/100][tail%100];
+            map[tail/100][tail%100]=0;
+            tail+=(tailDir==DOWN)*100-(tailDir==UP)*100+(tailDir==RIGHT)-(tailDir==LEFT);
+            food=FOOD;
+        }
+        map[head/100][head%100]=direction;
+        system("clear");
+        for(short i =0;i<30;i++)
+        {
+            for(short j = 0;j<60;j++)
+            {
+                if(map[i][j]==1)         printf("\033[30m[]");
+                else if(map[i][j]==FOOD) printf("\033[31m[]");
+                else if(map[i][j]==0)    printf("  ");
+                else                     printf("\033[32m[]");
+            }
+            printf("\n");
+        }
+        pthread_mutex_unlock(&lock);
+        if(forward!=0&&forward!=FOOD) exit(0);
+    }
+}
+
+void * input()
+{
+    struct termios new;
+    tcgetattr(0,&new);
+    new.c_lflag = new.c_lflag & ~(ICANON | ECHO);
+    new.c_cc[VMIN] = 1 ;
+    new.c_cc[VTIME] = 0 ;
+    tcsetattr(0,TCSANOW,&new);
+    char ch;
+    short toward;
+    while((ch=getchar())!='q')
+    {
+        if((toward=(ch=='w')*UP+(ch=='s')*DOWN+(ch=='a')*LEFT+(ch=='d')*RIGHT)&direction)
+        {
+            pthread_mutex_lock(&lock);
+            time1=time2-0.3;
+            direction=toward;
+            pthread_mutex_unlock(&lock);
+        }
+    }
+    exit(0);
+}
