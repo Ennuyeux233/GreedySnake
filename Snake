@@ -1,8 +1,12 @@
 #include <stdio.h>    
-#include <time.h>     //计时所需
-#include <termios.h>  //将getchar变成非阻塞函数
-#include <pthread.h>  //创建线程
-#include <stdlib.h>   //使用系统清屏函数
+//计时所需
+#include <time.h>
+//将getchar变成getch函数
+#include <termios.h>
+//创建线程
+#include <pthread.h>  
+//使用系统清屏函数
+#include <stdlib.h> 
 
 #define UP    9
 #define DOWN  6
@@ -10,25 +14,47 @@
 #define RIGHT 5
 #define FOOD  32
 
+//读取用户输入的控制
 void * input();
 
+//创建一把互斥锁
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER ;
+//蛇头运动方向
 short direction = 5;
 time_t time1,time2;
+
 int main()
 {
+    //head是蛇头，tail是蛇尾,tailDir是尾巴前进方向，forward存储蛇头下一格的数值，food表示食物是否被吃掉，map是地图
     short head=(30/2)*100+2,tail=(30/2)*100+1,tailDir=RIGHT,forward=0,food=0,map[30][60]={0};
     pthread_t tid;
+    
+    //初始化蛇头和蛇尾的运动方向
     map[head/100][head%100] = (map[tail/100][tail%100] = RIGHT);
+    
+    /*为random函数提供种子函数,
+    同时初始化time1和time2*/
     srand((time1=time(&time2)));
+    
+    //创建线程
     pthread_create(&tid,NULL,input,NULL);
+    
+    //初始化墙体
     for(int i=0;i<30;i++) for(int j=0;j<60;j++) if(i==0||i==29||j==0||j==59) map[i][j]=1;
+    
+    //y和x用于存储生成食物的坐标
     for(short y,x;1;time(&time2))
     {
+        //如果食物被吃了 && 随机数生成的是正数 && 该位置没有被占用
         if(food==0&&(y=((y=(random()%3000))*((x=y%60)>0))/100)>0&&map[y][x]==0)
         {
+            //将食物放到map里并且激活food
             food=(map[y][x]=FOOD);
+            
+            //ubuntu清屏函数
             system("clear");
+            
+            //打印地图
             for(short i =0;i<30;i++)
             {
                 for(short j = 0;j<60;j++)
@@ -41,23 +67,46 @@ int main()
                 printf("\n");
             }
         }
+        
+        //占有资源
         pthread_mutex_lock(&lock);
+        
+        //如果时间没过0.3秒蛇就不动
         if(time2-time1<0.3) 
         {
             pthread_mutex_unlock(&lock);
             continue;
         }
+        
+        //移动前蛇头的方向
         map[head/100][head%100]=direction;
+        
+        //改变蛇头的坐标
         head+=(direction==DOWN)*100-(direction==UP)*100+(direction==RIGHT)-(direction==LEFT);
+        
+        //重置时间，并且假定food已经被吃掉
         food=!(time1=time2);
+        
+        //如果蛇头移动后所在的位置不是食物，就要擦掉蛇尾
         if((forward=map[head/100][head%100])!=FOOD)
         {
+            //保存旧尾巴的方向
             tailDir = map[tail/100][tail%100];
+            
+            //擦掉旧尾巴在地图的位置
             map[tail/100][tail%100]=0;
+            
+            //改变尾巴的坐标
             tail+=(tailDir==DOWN)*100-(tailDir==UP)*100+(tailDir==RIGHT)-(tailDir==LEFT);
+            
+            //因为没有吃到食物所以把食物还回去
             food=FOOD;
         }
+        
+        //将蛇头打印在map上
         map[head/100][head%100]=direction;
+        
+        //清屏并打印
         system("clear");
         for(short i =0;i<30;i++)
         {
@@ -70,11 +119,16 @@ int main()
             }
             printf("\n");
         }
+        
+        //放开资源
         pthread_mutex_unlock(&lock);
+        
+        //如果蛇头撞到自己或者撞墙
         if(forward!=0&&forward!=FOOD) exit(0);
     }
 }
 
+//获取用户输入
 void * input()
 {
     struct termios new;
@@ -83,15 +137,29 @@ void * input()
     new.c_cc[VMIN] = 1 ;
     new.c_cc[VTIME] = 0 ;
     tcsetattr(0,TCSANOW,&new);
+    
+    //获取用户输入的字符
     char ch;
+    
+    //蛇头前进的方向
     short toward;
+    
+    //如果用户输入的不是'q'就进入
     while((ch=getchar())!='q')
     {
+        //判断用户输入的是否是对应字符，并且是否与蛇现在的方向冲突
         if((toward=(ch=='w')*UP+(ch=='s')*DOWN+(ch=='a')*LEFT+(ch=='d')*RIGHT)&direction)
         {
+            //占有资源
             pthread_mutex_lock(&lock);
+            
+            //让main函数一定重新打印
             time1=time2-0.3;
+            
+            //重置蛇的方向
             direction=toward;
+            
+            //放弃占有资源
             pthread_mutex_unlock(&lock);
         }
     }
