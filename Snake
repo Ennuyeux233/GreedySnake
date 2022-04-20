@@ -1,8 +1,8 @@
-#include <stdio.h>
-#include <time.h>
-#include <termios.h>
-#include <pthread.h>
-#include <stdlib.h>
+#include <stdio.h>    
+#include <time.h>     //计时所需
+#include <termios.h>  //将getchar变成非阻塞函数
+#include <pthread.h>  //创建线程
+#include <stdlib.h>   //使用系统清屏函数
 
 #define UP    9
 #define DOWN  6
